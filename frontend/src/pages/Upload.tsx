@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { supabase } from '../services/supabaseClient';
 import { UploadCloud, FileText, CheckCircle, AlertCircle, Loader2, FlaskConical, Pill, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -67,8 +68,25 @@ export const Upload = () => {
     try {
       const res = await fetch(endpoint, { method: 'POST', body: formData });
       if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
-      setResult(await res.json());
+      const data = await res.json();
+      setResult(data);
       setStatus('success');
+
+      // ── Persist to Supabase ──────────────────────────────────
+      if (user) {
+        const aiText = data.ai_summary || data.prescription_analysis || null;
+        const { error: dbErr } = await supabase
+          .from('medical_reports')
+          .insert({
+            user_id:         user.id,
+            file_name:       file.name,
+            report_type:     mode,
+            status:          'completed',
+            biomarkers_json: data.biomarkers || null,
+            ai_summary_text: aiText,
+          });
+        if (dbErr) console.warn('Could not save to history:', dbErr.message);
+      }
     } catch (e: any) {
       setError(e.message || 'An unexpected error occurred.');
       setStatus('error');

@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Upload } from './pages/Upload';
+import { Reports } from './pages/Reports';
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
               <Route element={<AppShell />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/upload"    element={<Upload />} />
-                <Route path="/reports"   element={<Dashboard />} />
+                <Route path="/reports"   element={<Reports />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
