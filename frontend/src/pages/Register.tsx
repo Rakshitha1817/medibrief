@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity } from 'lucide-react';
+import { Activity, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: '10px',
+  border: '1px solid var(--border)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  fontSize: '14px',
+  outline: 'none',
+  transition: 'border-color 0.15s',
+};
 
 export const Register = () => {
   const [fullName, setFullName] = useState('');
@@ -10,115 +22,138 @@ export const Register = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     setLoading(true);
     setError(null);
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          full_name: fullName,
-        }
-      }
+      options: { data: { full_name: fullName } }
     });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      // Typically need to check email for verification, but for MVP we might just login
-      navigate('/dashboard');
+    if (error) { setError(error.message); setLoading(false); }
+    else {
+      setSuccess(true);
+      setTimeout(() => navigate('/dashboard'), 1500);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl border border-slate-100"
+    <div className="min-h-screen flex" style={{ background: 'var(--bg-primary)' }}>
+
+      {/* Left branding panel */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12"
+        style={{ background: 'var(--bg-secondary)', borderRight: '1px solid var(--border)' }}
       >
-        <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-accent/10">
-            <Activity className="h-8 w-8 text-accent" />
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)' }}>
+            <Activity className="w-5 h-5 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-slate-900">Create Account</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Start tracking your health intelligently
-          </p>
+          <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>MediBrief</span>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleRegister}>
-          {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">
-              {error}
+
+        <div>
+          <h1 className="text-4xl font-bold mb-4 leading-tight" style={{ color: 'var(--text-primary)' }}>
+            Your personal<br />health analyst.
+          </h1>
+          <p className="text-base mb-8" style={{ color: 'var(--text-secondary)' }}>
+            Join thousands of users who trust MediBrief to make sense of their medical reports in seconds.
+          </p>
+          <div className="space-y-3">
+            {['AI-powered biomarker extraction', 'Plain-English health summaries', 'Lab reports & prescriptions supported'].map(f => (
+              <div key={f} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--success-subtle)' }}>
+                  <CheckCircle className="w-3 h-3" style={{ color: 'var(--success)' }} />
+                </div>
+                <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          © 2025 MediBrief. All rights reserved.
+        </p>
+      </div>
+
+      {/* Right form panel */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm"
+        >
+          {/* Mobile logo */}
+          <div className="flex items-center gap-3 mb-10 lg:hidden">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)' }}>
+              <Activity className="w-5 h-5 text-white" />
             </div>
-          )}
-          <div className="space-y-4">
-            <div>
-              <label className="sr-only" htmlFor="fullName">Full Name</label>
-              <input
-                id="fullName"
-                name="fullName"
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 rounded-lg focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-                placeholder="Full Name"
-              />
-            </div>
-            <div>
-              <label className="sr-only" htmlFor="email">Email address</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 rounded-lg focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label className="sr-only" htmlFor="password">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-3 border border-slate-300 placeholder-slate-500 text-slate-900 rounded-lg focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-                placeholder="Password (min 6 chars)"
-              />
-            </div>
+            <span className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>MediBrief</span>
           </div>
 
-          <div>
+          <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Create your account</h2>
+          <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>Free forever. No credit card required.</p>
+
+          <form onSubmit={handleRegister} className="space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-xl text-sm" style={{ background: 'var(--danger-subtle)', color: 'var(--danger)' }}>
+                <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+              </div>
+            )}
+            {success && (
+              <div className="flex items-center gap-2 p-3 rounded-xl text-sm" style={{ background: 'var(--success-subtle)', color: 'var(--success)' }}>
+                <CheckCircle className="w-4 h-4 flex-shrink-0" /> Account created! Redirecting...
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {[
+                { value: fullName, setter: setFullName, placeholder: 'Full name',     type: 'text',     id: 'fullName' },
+                { value: email,    setter: setEmail,    placeholder: 'Email address', type: 'email',    id: 'email' },
+                { value: password, setter: setPassword, placeholder: 'Password (min 6 characters)', type: 'password', id: 'password' },
+              ].map(({ value, setter, placeholder, type, id }) => (
+                <input
+                  key={id}
+                  id={id}
+                  type={type}
+                  required
+                  value={value}
+                  onChange={e => setter(e.target.value)}
+                  placeholder={placeholder}
+                  style={inputStyle}
+                  onFocus={e => (e.target as HTMLInputElement).style.borderColor = 'var(--accent)'}
+                  onBlur={e => (e.target as HTMLInputElement).style.borderColor = 'var(--border)'}
+                />
+              ))}
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-accent hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:opacity-50 transition-colors"
+              disabled={loading || success}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
+              style={{ background: 'var(--accent)' }}
+              onMouseEnter={e => !(loading || success) && ((e.currentTarget as HTMLButtonElement).style.background = 'var(--accent-hover)')}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--accent)'}
             >
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating account...</> : 'Create Account'}
             </button>
-          </div>
-          
-          <div className="text-center text-sm">
-            <span className="text-slate-600">Already have an account? </span>
-            <Link to="/login" className="font-medium text-accent hover:text-blue-600">
+          </form>
+
+          <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold" style={{ color: 'var(--accent-hover)' }}>
               Sign in
             </Link>
-          </div>
-        </form>
-      </motion.div>
+          </p>
+        </motion.div>
+      </div>
     </div>
   );
 };
