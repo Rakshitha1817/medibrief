@@ -1,33 +1,59 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@layer base {
-  :root {
-    --bg-primary:    #0a0a0f;
-    --bg-secondary:  #111118;
-    --bg-surface:    #16161f;
-    --bg-elevated:   #1c1c28;
-    --border:        rgba(255,255,255,0.07);
-    --border-hover:  rgba(255,255,255,0.12);
-    --text-primary:  #f0f0f8;
-    --text-secondary:#9898b0;
-    --text-muted:    #55556a;
-    --accent:        #6366f1;
-    --accent-hover:  #818cf8;
-    --accent-subtle: rgba(99,102,241,0.12);
-    --success:       #10b981;
-    --success-subtle:rgba(16,185,129,0.1);
-    --warning:       #f59e0b;
-    --warning-subtle:rgba(245,158,11,0.1);
-    --danger:        #ef4444;
-    --danger-subtle: rgba(239,68,68,0.1);
-    --sky:           #38bdf8;
-    --sky-subtle:    rgba(56,189,248,0.1);
-  }
+/* ─── Dark Theme (default) ─────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --bg-primary:     #0a0a0f;
+  --bg-secondary:   #111118;
+  --bg-surface:     #16161f;
+  --bg-elevated:    #1c1c28;
+  --border:         rgba(255,255,255,0.07);
+  --border-hover:   rgba(255,255,255,0.14);
+  --text-primary:   #f0f0f8;
+  --text-secondary: #9898b0;
+  --text-muted:     #55556a;
+  --accent:         #6366f1;
+  --accent-hover:   #818cf8;
+  --accent-subtle:  rgba(99,102,241,0.12);
+  --success:        #10b981;
+  --success-subtle: rgba(16,185,129,0.1);
+  --warning:        #f59e0b;
+  --warning-subtle: rgba(245,158,11,0.1);
+  --danger:         #ef4444;
+  --danger-subtle:  rgba(239,68,68,0.1);
+  --sky:            #38bdf8;
+  --sky-subtle:     rgba(56,189,248,0.1);
+  color-scheme: dark;
+}
 
-  html {
-    color-scheme: dark;
-  }
+/* ─── Light Theme ───────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary:     #f5f6fa;
+  --bg-secondary:   #ffffff;
+  --bg-surface:     #ffffff;
+  --bg-elevated:    #f0f1f7;
+  --border:         rgba(0,0,0,0.08);
+  --border-hover:   rgba(0,0,0,0.14);
+  --text-primary:   #0f0f1a;
+  --text-secondary: #4a4a6a;
+  --text-muted:     #9898b4;
+  --accent:         #6366f1;
+  --accent-hover:   #4f46e5;
+  --accent-subtle:  rgba(99,102,241,0.08);
+  --success:        #059669;
+  --success-subtle: rgba(5,150,105,0.08);
+  --warning:        #d97706;
+  --warning-subtle: rgba(217,119,6,0.08);
+  --danger:         #dc2626;
+  --danger-subtle:  rgba(220,38,38,0.08);
+  --sky:            #0284c7;
+  --sky-subtle:     rgba(2,132,199,0.08);
+  color-scheme: light;
+}
+
+/* ─── Base ──────────────────────────────────────────────────── */
+@layer base {
+  html { transition: background-color 0.2s ease, color 0.2s ease; }
 
   body {
     background-color: var(--bg-primary);
@@ -37,24 +63,20 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
-  * {
-    border-color: var(--border);
-  }
+  * { border-color: var(--border); box-sizing: border-box; }
 
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 99px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
-  /* Prose overrides for dark mode */
+  /* Prose overrides */
   .prose {
-    --tw-prose-body:        var(--text-secondary);
-    --tw-prose-headings:    var(--text-primary);
-    --tw-prose-bold:        var(--text-primary);
-    --tw-prose-links:       var(--accent-hover);
-    --tw-prose-bullets:     var(--text-muted);
-    --tw-prose-hr:          var(--border);
-    --tw-prose-code:        var(--text-primary);
+    --tw-prose-body:     var(--text-secondary);
+    --tw-prose-headings: var(--text-primary);
+    --tw-prose-bold:     var(--text-primary);
+    --tw-prose-links:    var(--accent-hover);
+    --tw-prose-bullets:  var(--text-muted);
+    --tw-prose-hr:       var(--border);
   }
 }
