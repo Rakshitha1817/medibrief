@@ -7,11 +7,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Allowed frontend origins
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://your-frontend.vercel.app",  # Replace after Vercel deploy
 ]
 
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -20,10 +23,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Import reports router safely
+try:
+    from app.api import reports
+
+    app.include_router(
+        reports.router,
+        prefix="/api/reports",
+        tags=["reports"]
+    )
+
+except Exception as e:
+    print(f"Reports router failed to load: {e}")
+
+
 @app.get("/")
 async def root():
-    return {"message": "Welcome to MediBrief API"}
+    return {
+        "message": "Welcome to MediBrief API",
+        "status": "running"
+    }
+
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy"
+    }
