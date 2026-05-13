@@ -3,10 +3,11 @@ import {
   useContext,
   useEffect,
   useState,
-  ReactNode,
 } from "react";
 
+import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+
 import { supabase } from "../services/supabaseClient";
 
 interface AuthContextType {
@@ -35,7 +36,7 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get existing session
+    // Get current session
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
@@ -49,7 +50,7 @@ export const AuthProvider = ({
         setLoading(false);
       });
 
-    // Listen for auth changes
+    // Listen for auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
