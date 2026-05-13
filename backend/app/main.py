@@ -7,11 +7,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
 origins = [
-    "http://localhost:5173",  # Frontend Vite default
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
-    # Add production frontend URL here later
 ]
 
 app.add_middleware(
@@ -21,10 +19,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from app.api import reports
-
-app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 
 @app.get("/")
 async def root():
