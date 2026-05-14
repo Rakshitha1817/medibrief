@@ -58,16 +58,27 @@ export const Upload = () => {
     if (!file) return;
     setStatus('uploading'); setError('');
 
+    const backendBase = import.meta.env.VITE_BACKEND_URL ?? '';
     const endpoint = mode === 'prescription'
-      ? 'http://localhost:8000/api/reports/upload-prescription'
-      : 'http://localhost:8000/api/reports/upload';
+      ? `${backendBase}/api/reports/upload-prescription`
+      : `${backendBase}/api/reports/upload`;
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
       const res = await fetch(endpoint, { method: 'POST', body: formData });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
+      if (!res.ok) {
+  let errorMsg = 'Server error';
+  try {
+    const e = await res.json();
+    errorMsg = e.detail || e.message || errorMsg;
+  } catch (_) {
+    const text = await res.text();
+    if (text) errorMsg = text;
+  }
+  throw new Error(errorMsg);
+}
       const data = await res.json();
       setResult(data);
       setStatus('success');
