@@ -69,16 +69,17 @@ export const Upload = () => {
     try {
       const res = await fetch(endpoint, { method: 'POST', body: formData });
       if (!res.ok) {
-  let errorMsg = 'Server error';
-  try {
-    const e = await res.json();
-    errorMsg = e.detail || e.message || errorMsg;
-  } catch (_) {
-    const text = await res.text();
-    if (text) errorMsg = text;
-  }
-  throw new Error(errorMsg);
-}
+        // Read the body once as text, then try to parse as JSON
+        const rawText = await res.text();
+        let errorMsg = 'Server error';
+        try {
+          const parsed = JSON.parse(rawText);
+          errorMsg = parsed.detail || parsed.message || rawText || errorMsg;
+        } catch (_) {
+          if (rawText) errorMsg = rawText;
+        }
+        throw new Error(errorMsg);
+      }
       const data = await res.json();
       setResult(data);
       setStatus('success');
