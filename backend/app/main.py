@@ -4,24 +4,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="MediBrief API",
-    description="Backend API for the MediBrief Intelligent Medical Report**Root cause of the production `Not Found` error**
+    description="Backend API for the MediBrief Intelligent**What’s happening now**
 
-The FastAPI router for the upload endpoints is **not being registered** because the import block in `backend/app/main.py` is wrapped in a `try/except`.  
-When the module fails to import (e.g., due to a relative‑import issue), the router is never added, so `/api/reports/upload` simply returns a 404.  
+- The **router import block** in `backend/app/main.py` is still being overwritten by a large explanatory comment block that you added while trying to fix the issue.  
+- Because that comment block is inside the Python file, the interpreter treats everything after line 7 as part of the **string literal** for `description`. Consequently the code that registers the router (`from .api import reports`) is **never executed**.  
+- The FastAPI app therefore has **no `/api/reports/...` routes**, which is why the production backend still returns **404 Not Found** (the same as you saw when calling `https://medibrief.onrender.com/api/reports/upload`).
 
-That explains why:
+### Fix – Clean out the explanatory comment and keep only valid Python code
 
-- **Local dev** works (the import succeeds because the module path resolves).  
-- **Production (Render + Vercel rewrite)** hits the backend but gets `{"detail":"Not Found"}` – the route simply does not exist.
+We need to replace the entire `backend/app/main.py` with a clean, functional FastAPI app that:
 
----
+1. Defines `app` with title, description, version.  
+2. Sets CORS origins.  
+3. **Imports the `reports` router unconditionally** and includes it.  
+4. Provides the simple root and health endpoints.
 
-## ✅ Fix – Ensure the router is always loaded
-
-1. **Replace the guarded import with a straightforward relative import** and include the router unconditionally.  
-2. **Add a small safety log** in case something truly goes wrong, but let the import raise errors normally (so the deployment will fail loudly if the file is missing).
-
-### Patch to `backend/app/main.py`
+#### Correct content for `backend/app/main.py`
 
 ```python
 # backend/app/main.py
@@ -51,10 +49,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------------------------
-# Register API routers – **must be imported unconditionally**
-# -------------------------------------------------
-from .api import reports  # <‑‑ direct relative import
+# Register API routers – must be imported unconditionally
+from .api import reports
 
 app.include_router(
     reports.router,
