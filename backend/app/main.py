@@ -1,10 +1,37 @@
+# backend/app/main.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(
+    title="MediBrief API",
+    description="Backend API for the MediBrief Intelligent Medical Report**Root cause of the production `Not Found` error**
+
+The FastAPI router for the upload endpoints is **not being registered** because the import block in `backend/app/main.py` is wrapped in a `try/except`.  
+When the module fails to import (e.g., due to a relative‑import issue), the router is never added, so `/api/reports/upload` simply returns a 404.  
+
+That explains why:
+
+- **Local dev** works (the import succeeds because the module path resolves).  
+- **Production (Render + Vercel rewrite)** hits the backend but gets `{"detail":"Not Found"}` – the route simply does not exist.
+
+---
+
+## ✅ Fix – Ensure the router is always loaded
+
+1. **Replace the guarded import with a straightforward relative import** and include the router unconditionally.  
+2. **Add a small safety log** in case something truly goes wrong, but let the import raise errors normally (so the deployment will fail loudly if the file is missing).
+
+### Patch to `backend/app/main.py`
+
+```python
+# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(
     title="MediBrief API",
     description="Backend API for the MediBrief Intelligent Medical Report Analysis Platform",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Allowed frontend origins
@@ -24,30 +51,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Import reports router safely
-try:
-    from app.api import reports
+# -------------------------------------------------
+# Register API routers – **must be imported unconditionally**
+# -------------------------------------------------
+from .api import reports  # <‑‑ direct relative import
 
-    app.include_router(
-        reports.router,
-        prefix="/api/reports",
-        tags=["reports"]
-    )
-
-except Exception as e:
-    print(f"Reports router failed to load: {e}")
-
+app.include_router(
+    reports.router,
+    prefix="/api/reports",
+    tags=["reports"],
+)
 
 @app.get("/")
 async def root():
-    return {
-        "message": "Welcome to MediBrief API",
-        "status": "running"
-    }
-
+    return {"message": "Welcome to MediBrief API", "status": "running"}
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}
