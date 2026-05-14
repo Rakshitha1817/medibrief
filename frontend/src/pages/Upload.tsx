@@ -80,7 +80,14 @@ export const Upload = () => {
         }
         throw new Error(errorMsg);
       }
-      const data = await res.json();
+      // Successful response: parse JSON from text
+      const rawText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (e) {
+        throw new Error('Invalid JSON response');
+      }
       setResult(data);
       setStatus('success');
 
