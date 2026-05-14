@@ -1,5 +1,4 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from app.core.config import settings
 
 router = APIRouter()
 
@@ -7,6 +6,14 @@ ALLOWED_TYPES = {
     "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+# Map content-type to MIME type string used in base64 data URLs
+MIME_MAP = {
+    "image/jpeg": "image/jpeg",
+    "image/jpg":  "image/jpeg",
+    "image/png":  "image/png",
+    "image/webp": "image/webp",
+}
 
 
 def validate_upload(file: UploadFile, content: bytes):
@@ -27,7 +34,11 @@ def validate_upload(file: UploadFile, content: bytes):
 async def upload_report(file: UploadFile = File(...)):
     """
     Handles lab report uploads (PDF or image).
-    Extracts text, parses biomarkers, and generates an AI summary.
+
+    Pipeline:
+      - Text-based PDF  → native text extraction → text AI model
+      - Scanned PDF     → render pages to images → vision AI model
+      - Image (any fmt) → base64 encode          → vision AI model
     """
     content = await file.read()
     validate_upload(file, content)
@@ -37,22 +48,44 @@ async def upload_report(file: UploadFile = File(...)):
         from app.services.medical_parser import MedicalParser
         from app.services.ai_service import AIService
 
-        # Step 1: Extract text
-        if file.content_type == "application/pdf":
-            raw_text = PDFExtractor.extract_text_from_bytes(content)
-        else:
-            # Image path — Phase 3.5 (basic fallback for now)
-            raw_text = PDFExtractor.extract_text_from_image_bytes(content)
-
-        # Step 2: Parse biomarkers
-        biomarkers = MedicalParser.parse_text(raw_text)
-
-        # Step 3: Generate AI summary (passes raw_text as fallback)
         ai_service = AIService()
-        ai_summary = ai_service.generate_health_summary(
-            biomarkers=biomarkers,
-            raw_text=raw_text
-        )
+
+        if file.content_type == "application/pdf":
+            # Try native text extraction first (fast, cheap)
+            raw_text = PDFExtractor.extract_text_from_bytes(content)
+
+            if len(raw_text.strip()) > 30:
+                # Text-based PDF — use standard text pipeline
+                biomarkers = MedicalParser.parse_text(raw_text)
+                ai_summary = ai_service.generate_health_summary(
+                    biomarkers=biomarkers,
+                    raw_text=raw_text
+                )
+            else:
+                # Scanned/image PDF — render pages and use vision model
+                page_images = PDFExtractor.get_pdf_page_images_base64(content)
+                if not page_images:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Could not render PDF pages. The file may be corrupt."
+                    )
+                ai_summary = ai_service.analyze_with_vision(
+                    images_base64=page_images,
+                    mime_type="image/jpeg",
+                    is_prescription=False
+                )
+                biomarkers = {}  # vision model extracts inline
+
+        else:
+            # Uploaded image — send directly to vision model
+            mime_type = MIME_MAP.get(file.content_type, "image/jpeg")
+            img_b64 = PDFExtractor.image_bytes_to_base64(content)
+            ai_summary = ai_service.analyze_with_vision(
+                images_base64=[img_b64],
+                mime_type=mime_type,
+                is_prescription=False
+            )
+            biomarkers = {}
 
         return {
             "filename": file.filename,
@@ -76,7 +109,11 @@ async def upload_report(file: UploadFile = File(...)):
 async def upload_prescription(file: UploadFile = File(...)):
     """
     Handles prescription uploads (PDF or image).
-    Extracts text and generates an AI medicine breakdown.
+
+    Pipeline:
+      - Text-based PDF  → native text extraction → text AI model
+      - Scanned PDF     → render pages to images → vision AI model
+      - Image (any fmt) → base64 encode          → vision AI model
     """
     content = await file.read()
     validate_upload(file, content)
@@ -85,18 +122,36 @@ async def upload_prescription(file: UploadFile = File(...)):
         from app.services.pdf_extractor import PDFExtractor
         from app.services.ai_service import AIService
 
-        # Step 1: Extract text
+        ai_service = AIService()
+
         if file.content_type == "application/pdf":
             raw_text = PDFExtractor.extract_text_from_bytes(content)
+
+            if len(raw_text.strip()) > 30:
+                # Text-based PDF
+                prescription_analysis = ai_service.analyze_prescription(raw_text)
+            else:
+                # Scanned PDF — use vision
+                page_images = PDFExtractor.get_pdf_page_images_base64(content)
+                if not page_images:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Could not render PDF pages. The file may be corrupt."
+                    )
+                prescription_analysis = ai_service.analyze_with_vision(
+                    images_base64=page_images,
+                    mime_type="image/jpeg",
+                    is_prescription=True
+                )
         else:
-            raw_text = PDFExtractor.extract_text_from_image_bytes(content)
-
-        if not raw_text.strip():
-            raise ValueError("Could not extract any text from the uploaded file.")
-
-        # Step 2: AI prescription analysis
-        ai_service = AIService()
-        prescription_analysis = ai_service.analyze_prescription(raw_text)
+            # Uploaded image
+            mime_type = MIME_MAP.get(file.content_type, "image/jpeg")
+            img_b64 = PDFExtractor.image_bytes_to_base64(content)
+            prescription_analysis = ai_service.analyze_with_vision(
+                images_base64=[img_b64],
+                mime_type=mime_type,
+                is_prescription=True
+            )
 
         return {
             "filename": file.filename,

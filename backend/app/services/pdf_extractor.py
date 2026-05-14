@@ -1,5 +1,6 @@
 import fitz  # PyMuPDF
 import io
+import base64
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,9 +10,8 @@ class PDFExtractor:
     @staticmethod
     def extract_text_from_bytes(pdf_bytes: bytes) -> str:
         """
-        Extracts raw text from a PDF file provided as bytes.
-        Falls back to OCR (page-by-page image → pytesseract) when
-        PyMuPDF's native text extraction returns nothing useful.
+        Extracts raw text from a text-based PDF file provided as bytes.
+        Returns empty string if the PDF is scanned/image-based.
         """
         try:
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -20,58 +20,35 @@ class PDFExtractor:
                 text_parts.append(page.get_text("text"))
             doc.close()
             combined = "\n".join(text_parts).strip()
-
-            # If native extraction returned meaningful text, use it
-            if len(combined) > 30:
-                return combined
-
-            # Fallback: render each page as an image and run OCR
-            logger.info("Native PDF text empty – falling back to OCR")
-            return PDFExtractor._ocr_pdf_bytes(pdf_bytes)
-
+            return combined
         except Exception as e:
-            logger.error(f"PDF extraction failed: {str(e)}")
-            raise ValueError(f"PDF Extraction Error: {str(e)}")
+            logger.error(f"PDF text extraction failed: {str(e)}")
+            return ""
 
     @staticmethod
-    def _ocr_pdf_bytes(pdf_bytes: bytes) -> str:
-        """Render each PDF page as an image, then OCR with pytesseract."""
+    def get_pdf_page_images_base64(pdf_bytes: bytes, max_pages: int = 3) -> list:
+        """
+        Renders each PDF page as a JPEG image and returns a list of
+        base64-encoded strings. Used for vision-based analysis of scanned PDFs.
+        Limits to max_pages to control token usage.
+        """
         try:
-            import pytesseract
-            from PIL import Image
-
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            ocr_parts = []
-            for page_num, page in enumerate(doc):
-                pix = page.get_pixmap(dpi=300)
-                img = Image.open(io.BytesIO(pix.tobytes("png")))
-                text = pytesseract.image_to_string(img)
-                if text.strip():
-                    ocr_parts.append(text)
+            images = []
+            for i, page in enumerate(doc):
+                if i >= max_pages:
+                    break
+                # 150 DPI is enough for vision models and keeps image size small
+                pix = page.get_pixmap(dpi=150)
+                img_bytes = pix.tobytes("jpeg")
+                images.append(base64.b64encode(img_bytes).decode("utf-8"))
             doc.close()
-            return "\n".join(ocr_parts)
-        except ImportError:
-            logger.warning("pytesseract/Pillow not installed – OCR unavailable")
-            return ""
+            return images
         except Exception as e:
-            logger.error(f"OCR fallback failed: {str(e)}")
-            return ""
+            logger.error(f"PDF page rendering failed: {str(e)}")
+            return []
 
     @staticmethod
-    def extract_text_from_image_bytes(image_bytes: bytes) -> str:
-        """
-        Attempts OCR on a standalone image using pytesseract.
-        Falls back gracefully if pytesseract is not installed.
-        """
-        try:
-            import pytesseract
-            from PIL import Image
-            image = Image.open(io.BytesIO(image_bytes))
-            text = pytesseract.image_to_string(image)
-            return text
-        except ImportError:
-            logger.warning("pytesseract not installed. Returning empty text for image.")
-            return ""
-        except Exception as e:
-            logger.error(f"Image OCR failed: {str(e)}")
-            return ""
+    def image_bytes_to_base64(image_bytes: bytes) -> str:
+        """Converts raw image bytes to a base64-encoded string."""
+        return base64.b64encode(image_bytes).decode("utf-8")
